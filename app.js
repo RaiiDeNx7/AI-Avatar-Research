@@ -392,6 +392,22 @@
     go("survey");
   }
 
+  function toggleFullscreen() {
+    const watch = document.querySelector(".watch");
+    if (!watch) return;
+    const active = document.fullscreenElement || document.webkitFullscreenElement;
+    if (active) {
+      const exit = document.exitFullscreen || document.webkitExitFullscreen;
+      if (exit) exit.call(document);
+      return;
+    }
+    const request = watch.requestFullscreen || watch.webkitRequestFullscreen;
+    if (request) {
+      const pending = request.call(watch);
+      if (pending && pending.catch) pending.catch(function () {});
+    }
+  }
+
   function togglePlay() {
     const video = document.getElementById("study-video");
     if (!video || video.error) return;
@@ -722,6 +738,7 @@
       '<p id="play-status" class="status" aria-live="polite">' + esc(status) + "</p>" +
       '<div class="actions">' +
       '<button type="button" class="' + playClass + '" id="play-btn" data-action="play">' + playLabel + "</button>" +
+      '<button type="button" class="button secondary" id="fullscreen-btn" data-action="fullscreen">Full screen</button>' +
       again +
       '<button type="button" class="' + continueClass + '" id="continue-btn" data-action="continue-video">' + continueLabel + "</button>" +
       "</div></section>"
@@ -900,8 +917,20 @@
       });
     }
 
+    video.addEventListener("dblclick", function () { toggleFullscreen(); });
     video.addEventListener("loadedmetadata", applyPlayback);
     video.addEventListener("play", applyPlayback);
+    if (!document.documentElement.dataset.fullscreenBound) {
+      document.documentElement.dataset.fullscreenBound = "1";
+      function onFullscreenChange() {
+        const button = document.getElementById("fullscreen-btn");
+        if (!button) return;
+        const active = document.fullscreenElement || document.webkitFullscreenElement;
+        button.textContent = active ? "Exit full screen" : "Full screen";
+      }
+      document.addEventListener("fullscreenchange", onFullscreenChange);
+      document.addEventListener("webkitfullscreenchange", onFullscreenChange);
+    }
 
     if (volume) {
       volume.addEventListener("input", function () {
@@ -982,6 +1011,7 @@
     else if (action === "choose-study") chooseStudy(el.dataset.study);
     else if (action === "choose-avatar") chooseAvatar(el.dataset.avatarId);
     else if (action === "play") togglePlay();
+    else if (action === "fullscreen") toggleFullscreen();
     else if (action === "choose-again") chooseAgain();
     else if (action === "continue-video") continueVideo();
     else if (action === "open-survey") {

@@ -298,6 +298,35 @@ h2 {
   margin-inline: auto;
 }
 
+.watch:fullscreen,
+.watch:-webkit-full-screen {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 24px;
+  background: #111;
+  color: #f5f5f5;
+  overflow: auto;
+}
+
+.watch:fullscreen .player,
+.watch:-webkit-full-screen .player {
+  width: min(100%, calc((100vh - 220px) * 16 / 9));
+  aspect-ratio: 16 / 9;
+  margin-inline: auto;
+}
+
+.watch:fullscreen .lede,
+.watch:fullscreen .status,
+.watch:fullscreen .eyebrow,
+.watch:-webkit-full-screen .lede,
+.watch:-webkit-full-screen .status,
+.watch:-webkit-full-screen .eyebrow {
+  color: #d7d7d7;
+}
+
 .player {
   width: 100%;
   aspect-ratio: 16 / 9;
