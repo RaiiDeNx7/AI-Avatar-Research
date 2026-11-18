@@ -393,17 +393,17 @@
   }
 
   function toggleFullscreen() {
-    const watch = document.querySelector(".watch");
-    if (!watch) return;
+    const player = document.querySelector(".player");
+    if (!player) return;
     const active = document.fullscreenElement || document.webkitFullscreenElement;
     if (active) {
       const exit = document.exitFullscreen || document.webkitExitFullscreen;
       if (exit) exit.call(document);
       return;
     }
-    const request = watch.requestFullscreen || watch.webkitRequestFullscreen;
+    const request = player.requestFullscreen || player.webkitRequestFullscreen;
     if (request) {
-      const pending = request.call(watch);
+      const pending = request.call(player);
       if (pending && pending.catch) pending.catch(function () {});
     }
   }
@@ -726,7 +726,10 @@
       "<h1>Video " + (session.round + 1) + " of " + total + "</h1>" +
       stepsHtml(session.round) +
       who +
-      '<div class="player"><video id="study-video" playsinline disablepictureinpicture aria-label="Study video"></video></div>' +
+      '<div class="player"><video id="study-video" playsinline disablepictureinpicture aria-label="Study video"></video>' +
+      '<button type="button" class="exit-fullscreen" data-action="fullscreen" aria-label="Exit full screen">' +
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5 8 12l7 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+      "</button></div>" +
       '<div class="track" id="progress" role="progressbar" aria-label="Watched progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="progress-fill"></div></div>' +
       '<div class="media-controls">' +
       '<label>Volume <input id="volume" type="range" min="0" max="100" step="1" value="' + Math.round(playback.volume * 100) + '" aria-valuemin="0" aria-valuemax="100"></label>' +
@@ -923,11 +926,9 @@
     if (!document.documentElement.dataset.fullscreenBound) {
       document.documentElement.dataset.fullscreenBound = "1";
       function onFullscreenChange() {
-        const watch = document.querySelector(".watch");
-        const button = document.getElementById("fullscreen-btn");
+        const player = document.querySelector(".player");
         const active = document.fullscreenElement || document.webkitFullscreenElement;
-        if (watch) watch.classList.toggle("is-fullscreen", Boolean(active) && active === watch);
-        if (button) button.textContent = active && watch && active === watch ? "Exit full screen" : "Full screen";
+        if (player) player.classList.toggle("is-fullscreen", Boolean(active) && active === player);
       }
       document.addEventListener("fullscreenchange", onFullscreenChange);
       document.addEventListener("webkitfullscreenchange", onFullscreenChange);
