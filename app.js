@@ -86,6 +86,21 @@
     saveCounter(counter);
   }
 
+  function formatPid(number) {
+    const text = String(number);
+    return text.length < 5 ? text.padStart(5, "0") : text;
+  }
+
+  function takeLocalPid(abandonUnsubmitted) {
+    const counter = readCounter();
+    if (abandonUnsubmitted && counter.active && !counter.submitted) counter.next += 1;
+    const pid = formatPid(counter.next);
+    counter.active = pid;
+    counter.submitted = false;
+    saveCounter(counter);
+    return pid;
+  }
+
   function counterUrl() {
     const url = String(config.log.scriptUrl || "").trim();
     try {
@@ -267,19 +282,40 @@
     else location.hash = next;
   }
 
+  function assignSession(pid) {
+    playback = { volume: 1, rate: 1 };
+    startError = "";
+    session = {
+      pid: pid,
+      study: null,
+      phase: "participation",
+      round: 0,
+      selection: null,
+      watched: false,
+      loggedStarted: false,
+      loggedCompleted: false,
+      surveyLogged: false,
+      surveyClaimed: false,
+      surveyDuplicate: false,
+      volume: 1,
+      rate: 1,
+    };
+    saveSession();
+    go("participation");
+  }
+
   function startNew() {
     if (issuing) return;
     const counter = readCounter();
     const pending = Boolean(counter.active) && !counter.submitted;
     if (session || pending) {
       const message = pending
-        ? "PID " + counter.active + " has not opened the survey yet. Start a new participant with a new ID anyway? The old ID cannot be reused."
+        ? "PID " + counter.active + " has not opened the survey yet. Start a new participant with the next number anyway? The watch log is kept."
         : "Start a new participant? This replaces the current ID and video progress on this browser. The watch log is kept.";
       if (!window.confirm(message)) return;
     }
     if (!counterUrl()) {
-      startError = "The shared participant counter is not connected, so a new ID cannot be issued.";
-      render();
+      assignSession(takeLocalPid(pending));
       return;
     }
     issuing = true;
@@ -293,25 +329,8 @@
         render();
         return;
       }
-      playback = { volume: 1, rate: 1 };
       saveCounter({ next: Number(pid) + 1, active: pid, submitted: false });
-      session = {
-        pid: pid,
-        study: null,
-        phase: "participation",
-        round: 0,
-        selection: null,
-        watched: false,
-        loggedStarted: false,
-        loggedCompleted: false,
-        surveyLogged: false,
-        surveyClaimed: false,
-        surveyDuplicate: false,
-        volume: 1,
-        rate: 1,
-      };
-      saveSession();
-      go("participation");
+      assignSession(pid);
     }, function () {
       issuing = false;
       startError = "A new participant ID could not be issued. Try again.";
@@ -416,7 +435,8 @@
   }
 
   function openSurvey() {
-    if (!session || session.surveyLogged || !session.surveyClaimed || session.surveyDuplicate) return;
+    if (!session || session.surveyLogged || session.surveyDuplicate) return;
+    if (counterUrl() && !session.surveyClaimed) return;
     session.surveyLogged = true;
     saveSession();
     markSubmitted(session.pid);
@@ -733,10 +753,7 @@
     if (session.surveyDuplicate) {
       note = "This participant ID has already opened the survey. It cannot be opened again.";
       control = '<button type="button" class="button" disabled>Survey already opened</button>';
-    } else if (!counterUrl()) {
-      note = "The shared participant counter is not connected, so the survey cannot be opened.";
-      control = '<button type="button" class="button" disabled>Survey unavailable</button>';
-    } else if (!session.surveyClaimed) {
+    } else if (counterUrl() && !session.surveyClaimed) {
       note = surveyError || "Checking this participant ID before the survey opens.";
       control = '<button type="button" class="button" disabled>' + (surveyError ? "Survey unavailable" : "Checking ID") + "</button>";
     } else if (session.surveyLogged) {
@@ -771,7 +788,7 @@
     const connected = Boolean(counterUrl());
     const sheetNote = connected
       ? "Events are sent to the Google Sheet. Participant IDs are issued there, and each ID can open the survey once."
-      : "The shared participant counter is not connected yet. New IDs cannot be issued. Add the Apps Script URL in config.js.";
+      : "Participant IDs are counted in this browser, starting at 00001. The next number is issued after the survey is opened.";
     const body = rows.map(function (row) {
       return (
         '<tr data-log-row data-pid="' + esc(row.pid) + '">' +
@@ -995,7 +1012,7 @@
     else if (action === "choose-again") chooseAgain();
     else if (action === "continue-video") continueVideo();
     else if (action === "open-survey") {
-      if (!session || session.surveyLogged || !session.surveyClaimed || session.surveyDuplicate) {
+      if (!session || session.surveyLogged || session.surveyDuplicate || (counterUrl() && !session.surveyClaimed)) {
         event.preventDefault();
         return;
       }

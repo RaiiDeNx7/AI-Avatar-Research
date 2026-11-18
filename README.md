@@ -40,8 +40,7 @@ Search engines are asked not to index the page.
 
 ## Running a session
 
-- **Start new participant** asks the shared counter for the next numeric PID, starting at `00001`. That number is never issued again.
-- The survey opens only after the counter accepts that PID. A second open for the same PID is refused.
+- **Start new participant** assigns the next numeric PID in this browser, starting at `00001`. The following number is issued after that person opens the survey.
 - The PID and place in the study survive a refresh in the same browser tab.
 - An unfinished video starts again from the beginning. Continue stays off until the video ends, and skipping ahead is blocked.
 - After a path is chosen, that PID cannot switch between Fixed and Variety.
