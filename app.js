@@ -1,7 +1,7 @@
 (function () {
   const SESSION_KEY = "avatarStudy.session.v1";
   const LOG_KEY = "avatarStudy.log.v1";
-  const COUNTER_KEY = "avatarStudy.pidCounter.v1";
+  const COUNTER_KEY = "avatarStudy.pidCounter.v2";
   const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
   const AVATAR_COLORS = ["#1f4b6e", "#1e6b45", "#8a4b12", "#6b2d5b", "#3d4a34", "#204e57"];
   const LOG_COLUMNS = ["time", "pid", "study", "round", "avatarId", "avatarLabel", "videoFile", "event"];
@@ -91,12 +91,12 @@
     return text.length < 5 ? text.padStart(5, "0") : text;
   }
 
-  function takeLocalPid(abandonUnsubmitted) {
+  function takeLocalPid() {
     const counter = readCounter();
-    if (abandonUnsubmitted && counter.active && !counter.submitted) counter.next += 1;
     const pid = formatPid(counter.next);
     counter.active = pid;
-    counter.submitted = false;
+    counter.next += 1;
+    counter.submitted = true;
     saveCounter(counter);
     return pid;
   }
@@ -306,16 +306,8 @@
 
   function startNew() {
     if (issuing) return;
-    const counter = readCounter();
-    const pending = Boolean(counter.active) && !counter.submitted;
-    if (session || pending) {
-      const message = pending
-        ? "PID " + counter.active + " has not opened the survey yet. Start a new participant with the next number anyway? The watch log is kept."
-        : "Start a new participant? This replaces the current ID and video progress on this browser. The watch log is kept.";
-      if (!window.confirm(message)) return;
-    }
     if (!counterUrl()) {
-      assignSession(takeLocalPid(pending));
+      assignSession(takeLocalPid());
       return;
     }
     issuing = true;
@@ -382,7 +374,7 @@
   }
 
   function continueVideo() {
-    if (!session || !session.watched) return;
+    if (!session) return;
     const total = roundCount();
     if (session.round < total - 1) {
       session.round += 1;
@@ -614,9 +606,6 @@
     const paragraphs = config.paragraphs.map(function (text) {
       return "<p>" + esc(text) + "</p>";
     }).join("");
-    const steps = config.steps.map(function (text) {
-      return "<li>" + esc(text) + "</li>";
-    }).join("");
     const actions = session
       ? '<button type="button" class="button" data-action="continue">Continue session</button>' +
         startButton("Start new participant", true)
@@ -626,10 +615,7 @@
       : "";
     return (
       "<section>" +
-      '<div class="home-grid">' +
       '<div class="prose"><h1>' + esc(config.overviewTitle) + "</h1>" + paragraphs + "</div>" +
-      '<aside class="panel"><h2>How it works</h2><ol class="steps-list">' + steps + "</ol></aside>" +
-      "</div>" +
       sessionNote +
       startNote() +
       '<div class="actions">' + actions + "</div>" +
@@ -716,10 +702,8 @@
     const continueLabel = last ? "Continue to survey" : "Next video";
     const playLabel = session.watched ? "Play again" : "Play";
     const playClass = session.watched ? "button secondary" : "button";
-    const continueClass = session.watched ? "button push" : "button secondary push";
-    const status = session.watched
-      ? "This video is complete. You can replay it or continue."
-      : "Press Play when you are ready. Skipping ahead is turned off.";
+    const continueClass = "button push";
+    const status = "Press Play when you are ready. Click the bar to move through the video.";
     return (
       '<section class="watch">' +
       '<p class="eyebrow">' + esc(title) + "</p>" +
@@ -739,8 +723,7 @@
       '<div class="actions">' +
       '<button type="button" class="' + playClass + '" id="play-btn" data-action="play">' + playLabel + "</button>" +
       again +
-      '<button type="button" class="' + continueClass + '" id="continue-btn" data-action="continue-video"' +
-      (session.watched ? "" : " disabled") + ">" + continueLabel + "</button>" +
+      '<button type="button" class="' + continueClass + '" id="continue-btn" data-action="continue-video">' + continueLabel + "</button>" +
       "</div></section>"
     );
   }
@@ -837,8 +820,6 @@
     const status = document.getElementById("play-status");
     const volume = document.getElementById("volume");
     const speed = document.getElementById("speed");
-    let maxTime = 0;
-    let guard = false;
 
     function applyPlayback() {
       video.volume = playback.volume;
@@ -908,24 +889,16 @@
       }
     });
 
-    video.addEventListener("timeupdate", function () {
-      const allowance = Math.max(1.25, (video.playbackRate || 1) * 0.8);
-      if (!guard && video.currentTime <= maxTime + allowance) {
-        maxTime = Math.max(maxTime, video.currentTime);
-      }
-      updateProgress();
-    });
+    video.addEventListener("timeupdate", updateProgress);
 
-    video.addEventListener("seeking", function () {
-      if (guard || video.ended) return;
-      const allowance = Math.max(1.25, (video.playbackRate || 1) * 0.8);
-      const finishing = isFinite(video.duration) && maxTime >= video.duration - 1.5 && video.currentTime >= video.duration - 0.35;
-      if (video.currentTime > maxTime + allowance && !finishing) {
-        guard = true;
-        try { video.currentTime = maxTime; } catch (error) {}
-        guard = false;
-      }
-    });
+    if (bar) {
+      bar.addEventListener("click", function (event) {
+        if (!video.duration || !isFinite(video.duration)) return;
+        const rect = bar.getBoundingClientRect();
+        const ratio = rect.width ? (event.clientX - rect.left) / rect.width : 0;
+        video.currentTime = Math.max(0, Math.min(video.duration, ratio * video.duration));
+      });
+    }
 
     video.addEventListener("loadedmetadata", applyPlayback);
     video.addEventListener("play", applyPlayback);

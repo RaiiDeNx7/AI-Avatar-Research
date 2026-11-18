@@ -12,12 +12,6 @@ window.STUDY_CONFIG = {
     "You will watch three videos. On the Fixed Study path, every video shows the same avatar. On the Variety Study path, you choose one of six avatars before each video.",
     "Your participant ID appears in the top right after you start. The survey uses that ID to connect your answers to the videos you watched.",
   ],
-  steps: [
-    "Press Start new participant. Your PID appears in the top right.",
-    "Open Participation and choose Fixed Study or Variety Study.",
-    "Watch three videos all the way through. The next step stays locked until the current video ends.",
-    "Open the survey and submit it. Then return home and start a new participant before the next person begins.",
-  ],
   fixed: {
     buttonTitle: "Fixed Study",
     buttonText: "Watch three videos of one avatar, one at a time.",
