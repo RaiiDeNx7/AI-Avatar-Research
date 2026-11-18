@@ -923,10 +923,11 @@
     if (!document.documentElement.dataset.fullscreenBound) {
       document.documentElement.dataset.fullscreenBound = "1";
       function onFullscreenChange() {
+        const watch = document.querySelector(".watch");
         const button = document.getElementById("fullscreen-btn");
-        if (!button) return;
         const active = document.fullscreenElement || document.webkitFullscreenElement;
-        button.textContent = active ? "Exit full screen" : "Full screen";
+        if (watch) watch.classList.toggle("is-fullscreen", Boolean(active) && active === watch);
+        if (button) button.textContent = active && watch && active === watch ? "Exit full screen" : "Full screen";
       }
       document.addEventListener("fullscreenchange", onFullscreenChange);
       document.addEventListener("webkitfullscreenchange", onFullscreenChange);
